@@ -1054,7 +1054,7 @@ body {
   <div class="page" id="page-blacklist">
     <div style="padding: 16px 16px 8px; display: flex; justify-content: space-between; align-items: center;">
       <div style="font-size: 18px; font-weight: 800;">踩雷黑名单 🚫</div>
-      <div style="font-size: 13px; color: var(--text3);" id="bl-count">0个</div>
+      <button onclick="openBlacklistAdd()" style="border:none;background:var(--black-list);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;">+ 直接添加</button>
     </div>
     <div class="toolbar">
       <div class="search-box">
@@ -1156,194 +1156,184 @@ body {
       <div class="quick-options" style="justify-content:center;">
         <button class="quick-opt selected" data-type="inventory" onclick="setAddType('inventory')">📦 库存</button>
         <button class="quick-opt" data-type="wishlist" onclick="setAddType('wishlist')">✨ 种草</button>
-        <button class="quick-opt" data-type="blacklist" onclick="setAddType('blacklist')">🚫 踩雷</button>
       </div>
     </div>
 
-    <!-- Photo + AI Button - single row -->
-    <div class="form-group">
-      <div style="display:flex;gap:10px;align-items:stretch;">
-        <!-- Compact photo area -->
-        <div id="photo-upload" style="width:100px;height:100px;flex-shrink:0;border:2px dashed var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden;position:relative;cursor:pointer;">
-          <span id="photo-placeholder" style="font-size:32px;">📸</span>
-          <img id="photo-preview" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;">
+    <!-- PHASE 1: Upload photo + AI scan -->
+    <div id="phase-upload">
+      <div class="form-group">
+        <div style="border:2px dashed var(--border);border-radius:16px;padding:24px 16px;text-align:center;background:var(--bg);position:relative;cursor:pointer;" id="upload-zone">
+          <div id="upload-placeholder">
+            <div style="font-size:40px;margin-bottom:8px;">📸</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text2);" id="upload-label">拍照 / 选择图片</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;" id="upload-sublabel">库存拍实物，种草传截图</div>
+          </div>
+          <img id="upload-preview" style="display:none;max-width:100%;max-height:200px;border-radius:12px;margin:0 auto;">
           <input type="file" id="photo-input" accept="image/*" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:10;" onchange="handlePhoto(event)">
         </div>
-        <!-- Right side: AI button + status -->
-        <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;">
-          <button id="ai-scan-btn" onclick="manualAiScan()" style="width:100%;padding:12px 16px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 3px 12px rgba(255,107,107,0.3);transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;">
-            <span>🤖</span> <span id="ai-btn-text">拍照后点我识别</span>
-          </button>
-          <div class="ai-scanning" id="ai-scanning" style="margin:0;">
-            <div class="ai-dot"></div>
-            <span id="ai-scanning-text">AI识别中...</span>
+      </div>
+      <button id="ai-scan-btn" onclick="manualAiScan()" style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 3px 12px rgba(255,107,107,0.3);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;transition:all 0.15s;">
+        <span>🤖</span> <span id="ai-btn-text">上传图片后点我识别</span>
+      </button>
+      <!-- AI scanning indicator -->
+      <div class="ai-scanning" id="ai-scanning">
+        <div class="ai-dot"></div>
+        <span id="ai-scanning-text">AI识别中...</span>
+      </div>
+    </div>
+
+    <!-- PHASE 2: Review + Edit form (hidden until AI completes or manual entry) -->
+    <div id="phase-form" style="display:none;">
+      <!-- Product image result -->
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;padding:12px;background:var(--bg);border-radius:14px;">
+        <div id="result-img-wrap" style="width:72px;height:72px;flex-shrink:0;border-radius:12px;overflow:hidden;background:var(--card);display:flex;align-items:center;justify-content:center;">
+          <img id="result-img" style="width:100%;height:100%;object-fit:cover;display:none;">
+          <span id="result-img-placeholder" style="font-size:32px;">📦</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div id="result-brand" style="font-size:11px;color:var(--accent);font-weight:700;text-transform:uppercase;"></div>
+          <div id="result-name" style="font-size:15px;font-weight:700;"></div>
+          <div id="result-cat" style="font-size:11px;color:var(--text3);"></div>
+        </div>
+      </div>
+
+      <!-- Blacklist Warning -->
+      <div class="bl-warning" id="bl-warning">
+        <div class="bl-warning-title">⚠️ 这个产品在你的踩雷黑名单里！</div>
+        <div class="bl-warning-reason" id="bl-warning-reason"></div>
+      </div>
+
+      <!-- Action bar: clear or manual toggle -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="detail-btn danger" onclick="clearAndRestart()" style="flex:1;padding:8px;font-size:12px;">🗑️ 清空重新识别</button>
+        <button class="detail-btn secondary" onclick="toggleManualEdit()" style="flex:1;padding:8px;font-size:12px;" id="manual-edit-btn">✏️ 手动修改</button>
+      </div>
+
+      <!-- Editable fields (collapsed by default after AI, expanded for manual) -->
+      <div id="edit-fields" style="display:none;">
+        <!-- Basic info -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">品牌</label>
+            <input class="form-input" id="f-brand" placeholder="如：兰蔻">
           </div>
-          <div style="font-size:11px;color:var(--text3);text-align:center;" id="ai-hint">拍照/选图 → 自动识别产品信息</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Blacklist Warning -->
-    <div class="bl-warning" id="bl-warning">
-      <div class="bl-warning-title">⚠️ 这个产品在你的踩雷黑名单里！</div>
-      <div class="bl-warning-reason" id="bl-warning-reason"></div>
-    </div>
-
-    <!-- Basic info -->
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">品牌</label>
-        <input class="form-input" id="f-brand" placeholder="如：兰蔻">
-      </div>
-      <div class="form-group">
-        <label class="form-label">产品名</label>
-        <input class="form-input" id="f-name" placeholder="如：小黑瓶精华">
-      </div>
-    </div>
-
-    <!-- Category -->
-    <div class="form-group">
-      <label class="form-label">分类</label>
-      <div class="quick-options" id="cat-options">
-        <button class="quick-opt" onclick="selectCat(this,'skincare')">🧴 护肤</button>
-        <button class="quick-opt" onclick="selectCat(this,'makeup')">💄 化妆</button>
-        <button class="quick-opt" onclick="selectCat(this,'haircare')">💇 护发</button>
-        <button class="quick-opt" onclick="selectCat(this,'bodycare')">🛁 身体</button>
-        <button class="quick-opt" onclick="selectCat(this,'tools')">🖌️ 工具</button>
-      </div>
-    </div>
-
-    <!-- Sub-category -->
-    <div class="form-group">
-      <label class="form-label">子分类</label>
-      <select class="form-select" id="f-subcat">
-        <option value="">选择子分类</option>
-      </select>
-    </div>
-
-    <!-- Inventory specific fields -->
-    <div id="inv-fields">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">规格</label>
-          <input class="form-input" id="f-size" placeholder="如：30ml">
-        </div>
-        <div class="form-group">
-          <label class="form-label">价格</label>
-          <input class="form-input" id="f-price" type="number" placeholder="$">
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">购买日期</label>
-          <input class="form-input" id="f-buydate" type="date">
-        </div>
-        <div class="form-group">
-          <label class="form-label">购买渠道</label>
-          <select class="form-select" id="f-source">
-            <option value="">选择渠道</option>
-            <option>Sephora</option>
-            <option>Ulta</option>
-            <option>Amazon</option>
-            <option>小红书</option>
-            <option>淘宝</option>
-            <option>专柜</option>
-            <option>代购</option>
-            <option>其他</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">囤货数量</label>
-          <input class="form-input" id="f-stock" type="number" value="1" min="1">
-        </div>
-        <div class="form-group">
-          <label class="form-label">开封日期</label>
-          <input class="form-input" id="f-opendate" type="date">
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">PAO（开封保质月数）</label>
-          <div class="quick-options">
-            <button class="quick-opt" onclick="selectPao(this,6)">6M</button>
-            <button class="quick-opt" onclick="selectPao(this,12)">12M</button>
-            <button class="quick-opt" onclick="selectPao(this,18)">18M</button>
-            <button class="quick-opt" onclick="selectPao(this,24)">24M</button>
-            <button class="quick-opt" onclick="selectPao(this,36)">36M</button>
+          <div class="form-group">
+            <label class="form-label">产品名</label>
+            <input class="form-input" id="f-name" placeholder="如：小黑瓶精华">
           </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label class="form-label">剩余量</label>
-        <div class="quick-options">
-          <button class="quick-opt" onclick="selectRemaining(this,'high')">多</button>
-          <button class="quick-opt" onclick="selectRemaining(this,'mid')">一半</button>
-          <button class="quick-opt" onclick="selectRemaining(this,'low')">快没了</button>
-          <button class="quick-opt" onclick="selectRemaining(this,'empty')">空了</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">存放位置</label>
-        <div class="quick-options" id="location-options"></div>
-      </div>
-    </div>
-
-    <!-- Wishlist specific fields -->
-    <div id="wish-fields" style="display:none">
-      <div class="form-group">
-        <label class="form-label">种草原因</label>
-        <textarea class="form-textarea" id="f-reason" placeholder="为什么想买？谁推荐的？"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">来源链接</label>
-        <input class="form-input" id="f-link" placeholder="小红书/微博链接">
-      </div>
-      <div class="form-row">
+        <!-- Category -->
         <div class="form-group">
-          <label class="form-label">参考价格</label>
-          <input class="form-input" id="f-wish-price" type="number" placeholder="$">
+          <label class="form-label">分类</label>
+          <div class="quick-options" id="cat-options">
+            <button class="quick-opt" onclick="selectCat(this,'skincare')">🧴 护肤</button>
+            <button class="quick-opt" onclick="selectCat(this,'makeup')">💄 化妆</button>
+            <button class="quick-opt" onclick="selectCat(this,'haircare')">💇 护发</button>
+            <button class="quick-opt" onclick="selectCat(this,'bodycare')">🛁 身体</button>
+            <button class="quick-opt" onclick="selectCat(this,'tools')">🖌️ 工具</button>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">种草来源</label>
-          <input class="form-input" id="f-wish-source" placeholder="博主/朋友名字">
+        <div class="form-group" id="subcat-group" style="display:none;">
+          <label class="form-label">子分类</label>
+          <select class="form-select" id="f-subcat"><option value="">选择子分类</option></select>
         </div>
+
+        <!-- Inventory specific fields -->
+        <div id="inv-fields">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">规格</label><input class="form-input" id="f-size" placeholder="如：30ml"></div>
+            <div class="form-group"><label class="form-label">价格</label>
+              <div style="display:flex;gap:4px;">
+                <select class="form-select" id="f-currency" style="width:60px;padding:0 4px;font-size:13px;"><option value="$">$</option><option value="¥">¥</option><option value="€">€</option><option value="£">£</option></select>
+                <input class="form-input" id="f-price" type="number" placeholder="金额" style="flex:1;">
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">购买日期</label>
+              <div style="display:flex;gap:4px;">
+                <input class="form-input" id="f-buydate" type="date" style="flex:1;">
+                <button onclick="document.getElementById('f-buydate').value=new Date().toISOString().slice(0,10)" style="border:1.5px solid var(--border);background:var(--card);border-radius:10px;padding:0 10px;font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit;">今天</button>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">购买渠道</label><input class="form-input" id="f-source" placeholder="AI自动填 / 手动写"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">囤货数量</label><input class="form-input" id="f-stock" type="number" value="1" min="1"></div>
+            <div class="form-group"><label class="form-label">开封日期</label>
+              <div style="display:flex;gap:4px;">
+                <input class="form-input" id="f-opendate" type="date" style="flex:1;">
+                <button onclick="document.getElementById('f-opendate').value=new Date().toISOString().slice(0,10)" style="border:1.5px solid var(--border);background:var(--card);border-radius:10px;padding:0 10px;font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit;">今天</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">PAO（开封保质月数）</label>
+            <div class="quick-options">
+              <button class="quick-opt" onclick="selectPao(this,6)">6M</button>
+              <button class="quick-opt" onclick="selectPao(this,12)">12M</button>
+              <button class="quick-opt" onclick="selectPao(this,18)">18M</button>
+              <button class="quick-opt" onclick="selectPao(this,24)">24M</button>
+              <button class="quick-opt" onclick="selectPao(this,36)">36M</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">剩余量</label>
+            <div class="quick-options">
+              <button class="quick-opt" onclick="selectRemaining(this,'high')">多</button>
+              <button class="quick-opt" onclick="selectRemaining(this,'mid')">一半</button>
+              <button class="quick-opt" onclick="selectRemaining(this,'low')">快没了</button>
+              <button class="quick-opt" onclick="selectRemaining(this,'empty')">空了</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">存放位置</label>
+            <div class="quick-options" id="location-options"></div>
+          </div>
+        </div>
+
+        <!-- Wishlist specific fields -->
+        <div id="wish-fields" style="display:none">
+          <div class="form-group"><label class="form-label">种草原因（AI提取 / 你自己写）</label><textarea class="form-textarea" id="f-reason" placeholder="为什么想买？博主怎么说的？" style="min-height:100px;"></textarea></div>
+          <div class="form-group"><label class="form-label">我的笔记</label><textarea class="form-textarea" id="f-mynotes" placeholder="你自己为什么想买？用在哪？"></textarea></div>
+          <div class="form-group"><label class="form-label">来源链接</label><input class="form-input" id="f-link" placeholder="小红书/微博链接"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">参考价格</label>
+              <div style="display:flex;gap:4px;">
+                <select class="form-select" id="f-wish-currency" style="width:60px;padding:0 4px;font-size:13px;"><option value="$">$</option><option value="¥">¥</option><option value="€">€</option><option value="£">£</option></select>
+                <input class="form-input" id="f-wish-price" type="number" placeholder="金额" style="flex:1;">
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">种草来源</label><input class="form-input" id="f-wish-source" placeholder="博主/朋友名字" value="小红书"></div>
+          </div>
+          <div class="form-group"><label class="form-label">标签</label><div class="quick-options" id="wish-tag-options"></div></div>
+          <div class="form-group"><label class="form-label">自定义标签</label>
+            <div class="tag-input-wrap" id="custom-tag-wrap" onclick="document.getElementById('custom-tag-input').focus()">
+              <input class="tag-input-field" id="custom-tag-input" placeholder="输入后按回车" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag()}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Blacklist specific fields -->
+        <div id="bl-fields" style="display:none">
+          <div class="form-group"><label class="form-label">踩雷原因</label><textarea class="form-textarea" id="f-bl-reason" placeholder="哪里不好用？为什么不推荐？"></textarea></div>
+        </div>
+
+        <!-- Common notes -->
+        <div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="f-notes" placeholder="其他想记录的..."></textarea></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">标签</label>
-        <div class="quick-options" id="wish-tag-options"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">自定义标签</label>
-        <div class="tag-input-wrap" id="custom-tag-wrap" onclick="document.getElementById('custom-tag-input').focus()">
-          <input class="tag-input-field" id="custom-tag-input" placeholder="输入后按回车" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag()}">
-        </div>
+
+      <!-- Save buttons -->
+      <div style="display:flex;gap:10px;margin-top:12px;padding-bottom:16px;">
+        <button class="detail-btn secondary" onclick="closeAddModal()" style="flex:0.35">取消</button>
+        <button class="detail-btn primary" onclick="saveProduct()" style="flex:0.65">✓ 确认保存</button>
       </div>
     </div>
 
-    <!-- Blacklist specific fields -->
-    <div id="bl-fields" style="display:none">
-      <div class="form-group">
-        <label class="form-label">踩雷原因</label>
-        <textarea class="form-textarea" id="f-bl-reason" placeholder="哪里不好用？为什么不推荐？"></textarea>
-      </div>
-    </div>
-
-    <!-- Common: notes -->
-    <div class="form-group">
-      <label class="form-label">备注</label>
-      <textarea class="form-textarea" id="f-notes" placeholder="其他想记录的..."></textarea>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:8px;padding-bottom:16px;">
-      <button class="detail-btn secondary" onclick="closeAddModal()" style="flex:0.4">取消</button>
-      <button class="detail-btn primary" onclick="saveProduct()" style="flex:0.6">保存</button>
+    <!-- Manual entry link (skip AI) -->
+    <div id="skip-ai-link" style="text-align:center;padding:8px 0;">
+      <button onclick="skipToManual()" style="font-size:12px;color:var(--text3);text-decoration:underline;border:none;background:none;cursor:pointer;font-family:inherit;">跳过AI，手动填写</button>
     </div>
   </div>
 </div>
@@ -1356,6 +1346,33 @@ body {
     <div id="manage-modal-body"></div>
     <div style="padding:16px 0;">
       <button class="detail-btn primary" onclick="closeManageModal()">完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BLACKLIST ADD MODAL ═══ -->
+<div class="modal-overlay" id="blAddModal" onclick="if(event.target===this)closeBlAddModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🚫 添加踩雷产品</div>
+    <div class="form-group">
+      <div style="border:2px dashed var(--border);border-radius:14px;padding:16px;text-align:center;background:var(--bg);position:relative;cursor:pointer;">
+        <div id="bl-upload-placeholder"><span style="font-size:28px;">📸</span><div style="font-size:12px;color:var(--text3);">可选：拍张照</div></div>
+        <img id="bl-upload-preview" style="display:none;max-width:100%;max-height:120px;border-radius:10px;">
+        <input type="file" id="bl-photo-input" accept="image/*" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;" onchange="handleBlPhoto(event)">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">品牌</label><input class="form-input" id="bl-brand" placeholder="品牌"></div>
+      <div class="form-group"><label class="form-label">产品名</label><input class="form-input" id="bl-name" placeholder="产品名"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">踩雷原因 *</label>
+      <textarea class="form-textarea" id="bl-add-reason" placeholder="哪里不好用？为什么不推荐？" style="min-height:80px;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;padding-bottom:16px;">
+      <button class="detail-btn secondary" onclick="closeBlAddModal()" style="flex:0.35">取消</button>
+      <button class="detail-btn primary" onclick="saveBlacklistDirect()" style="flex:0.65;background:var(--black-list);">🚫 加入黑名单</button>
     </div>
   </div>
 </div>
@@ -1408,7 +1425,7 @@ body {
 </nav>
 
 <!-- ═══ FAB ═══ -->
-<button class="fab" onclick="openAddModal()">+</button>
+<button class="fab" id="main-fab" onclick="fabAdd()">+</button>
 
 <script>
 // ═══════════════════════════
@@ -1473,6 +1490,7 @@ function goToPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+  document.getElementById('main-fab').style.display = page === 'settings' ? 'none' : '';
   if (page === 'inventory') renderInventory();
   if (page === 'wishlist') renderWishlist();
   if (page === 'blacklist') renderBlacklist();
@@ -1535,6 +1553,18 @@ function renderInventory() {
     return;
   }
 
+  // Smart sort: expired/expiring first, then empty/low, then rest by date
+  items.sort((a, b) => {
+    const aExp = isExpiringSoon(a) ? 0 : 1;
+    const bExp = isExpiringSoon(b) ? 0 : 1;
+    if (aExp !== bExp) return aExp - bExp;
+    const remOrder = {empty:0, low:1, mid:2, high:3};
+    const aRem = remOrder[a.remaining] ?? 3;
+    const bRem = remOrder[b.remaining] ?? 3;
+    if (aRem !== bRem) return aRem - bRem;
+    return (b.updatedAt || 0) - (a.updatedAt || 0);
+  });
+
   if (currentView === 'grid') {
     container.innerHTML = `<div class="grid-view">${items.map(p => gridCard(p)).join('')}</div>`;
   } else {
@@ -1567,7 +1597,7 @@ function listItem(p) {
     <div class="list-item-info">
       <div class="list-item-brand">${esc(p.brand || '')}</div>
       <div class="list-item-name">${esc(p.name || '未命名')}</div>
-      <div class="list-item-sub">${esc(p.size || '')} ${p.price ? '· $'+p.price : ''}</div>
+      <div class="list-item-sub">${esc(p.size || '')} ${p.price ? '· '+(p.currency||'$')+p.price : ''} ${p.purchaseSource ? '· '+esc(p.purchaseSource) : ''}</div>
     </div>
     <div class="list-item-right">
       <div class="list-item-remaining ${p.remaining || 'high'}">${remainLabel}</div>
@@ -1615,7 +1645,7 @@ function wishCard(p) {
       <div class="wish-card-info">
         <div class="wish-card-brand">${esc(p.brand || '')}</div>
         <div class="wish-card-name">${esc(p.name || '未命名')}</div>
-        <div class="wish-card-price">${p.wishPrice ? '$'+p.wishPrice : ''}</div>
+        <div class="wish-card-price">${p.wishPrice ? (p.wishCurrency||'$')+p.wishPrice : ''}</div>
       </div>
     </div>
     ${p.reason ? `<div class="wish-card-reason">${esc(p.reason)}</div>` : ''}
@@ -1632,7 +1662,7 @@ function renderBlacklist() {
   let items = products.filter(p => p.status === 'blacklist');
   if (search) items = items.filter(p => (p.brand + p.name + (p.blReason||'')).toLowerCase().includes(search));
 
-  document.getElementById('bl-count').textContent = items.length + '个';
+  // Update badge
   const badge = document.getElementById('bl-badge');
   if (items.length > 0) { badge.textContent = items.length; badge.style.display = ''; } else { badge.style.display = 'none'; }
 
@@ -1684,7 +1714,7 @@ function openDetail(id) {
     // Info grid
     html += `<div class="detail-section"><div class="detail-section-title">产品信息</div><div class="detail-grid">`;
     if (p.size) html += field('规格', p.size);
-    if (p.price) html += field('价格', '$' + p.price);
+    if (p.price) html += field('价格', (p.currency || '$') + p.price);
     if (p.buyDate) html += field('购买日期', p.buyDate);
     if (p.purchaseSource) html += field('购买渠道', p.purchaseSource);
     if (p.openDate) html += field('开封日期', p.openDate);
@@ -1708,13 +1738,14 @@ function openDetail(id) {
       <button class="detail-btn primary" onclick="repurchase('${p.id}')">回购+1</button>
     </div>`;
     html += `<div class="detail-btn-row">
-      <button class="detail-btn danger" onclick="moveToBlacklist('${p.id}')">标记踩雷</button>
+      <button class="detail-btn danger" onclick="moveToBlacklist('${p.id}')">🚫 踩雷（加入黑名单）</button>
       <button class="detail-btn secondary" onclick="markEmpty('${p.id}')">用完了</button>
     </div>`;
 
   } else if (p.status === 'wishlist') {
     if (p.reason) html += `<div class="detail-section"><div class="detail-section-title">种草原因</div><div class="detail-notes">${esc(p.reason)}</div></div>`;
-    if (p.wishPrice) html += `<div class="detail-section"><div class="detail-grid">${field('参考价格','$'+p.wishPrice)}${p.wishSource?field('种草来源',p.wishSource):''}</div></div>`;
+    if (p.myNotes) html += `<div class="detail-section"><div class="detail-section-title">我的笔记</div><div class="detail-notes" style="background:var(--wish-bg);">📝 ${esc(p.myNotes)}</div></div>`;
+    if (p.wishPrice) html += `<div class="detail-section"><div class="detail-grid">${field('参考价格',(p.wishCurrency||'$')+p.wishPrice)}${p.wishSource?field('种草来源',p.wishSource):''}</div></div>`;
     if (p.link) html += `<div class="detail-section"><div class="detail-section-title">来源链接</div><a href="${esc(p.link)}" target="_blank" style="color:var(--accent);font-size:13px;word-break:break-all;">${esc(p.link)}</a></div>`;
     if ((p.tags||[]).length) html += `<div class="detail-section"><div class="detail-section-title">标签</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${p.tags.map(t=>`<span class="wish-tag">${esc(t)}</span>`).join('')}</div></div>`;
     if (p.screenshotImg) html += `<div class="detail-section"><div class="detail-section-title">小红书截图</div><img src="${p.screenshotImg}" style="width:100%;border-radius:12px;"></div>`;
@@ -1724,7 +1755,7 @@ function openDetail(id) {
       <button class="detail-btn primary" onclick="wishToPurchased('${p.id}')">已买！移到库存</button>
     </div>`;
     html += `<div class="detail-btn-row">
-      <button class="detail-btn danger" onclick="moveToBlacklist('${p.id}')">踩雷了</button>
+      <button class="detail-btn danger" onclick="moveToBlacklist('${p.id}')">🚫 踩雷了（移到黑名单）</button>
     </div>`;
 
   } else if (p.status === 'blacklist') {
@@ -1794,14 +1825,105 @@ function markEmpty(id) {
 
 function moveToBlacklist(id) {
   const reason = prompt('踩雷原因？');
-  if (reason === null) return;
+  if (reason === null || !reason.trim()) return;
   const p = products.find(x => x.id === id);
   if (!p) return;
-  p.status = 'blacklist';
-  p.blReason = reason;
-  save();
-  toast('已加入黑名单 🚫');
+  
+  if (p.status === 'inventory') {
+    // COPY to blacklist (keep original in inventory)
+    const blCopy = {
+      ...p,
+      id: Date.now().toString(),
+      status: 'blacklist',
+      blReason: reason.trim(),
+      updatedAt: Date.now()
+    };
+    products.unshift(blCopy);
+    // Mark original as "踩雷" in notes so user remembers
+    p.notes = (p.notes ? p.notes + '\n' : '') + '⚠️ 已标记踩雷：' + reason.trim();
+    save();
+    toast('已加入黑名单（库存保留）🚫');
+  } else if (p.status === 'wishlist') {
+    // MOVE to blacklist (remove from wishlist)
+    p.status = 'blacklist';
+    p.blReason = reason.trim();
+    p.updatedAt = Date.now();
+    save();
+    toast('已从种草移到黑名单 🚫');
+  } else {
+    // Already blacklist, just update reason
+    p.blReason = reason.trim();
+    save();
+    toast('踩雷原因已更新');
+  }
   closeDetail();
+}
+
+// Direct blacklist add from blacklist tab
+let blAddImg = null;
+
+function openBlacklistAdd() {
+  blAddImg = null;
+  document.getElementById('bl-brand').value = '';
+  document.getElementById('bl-name').value = '';
+  document.getElementById('bl-add-reason').value = '';
+  document.getElementById('bl-upload-preview').style.display = 'none';
+  document.getElementById('bl-upload-placeholder').style.display = '';
+  document.getElementById('bl-photo-input').value = '';
+  document.getElementById('blAddModal').classList.add('open');
+}
+
+function closeBlAddModal() {
+  document.getElementById('blAddModal').classList.remove('open');
+}
+
+function handleBlPhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxSize = 300;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > maxSize) { h *= maxSize/w; w = maxSize; } }
+      else { if (h > maxSize) { w *= maxSize/h; h = maxSize; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      blAddImg = canvas.toDataURL('image/jpeg', 0.7);
+      document.getElementById('bl-upload-preview').src = blAddImg;
+      document.getElementById('bl-upload-preview').style.display = '';
+      document.getElementById('bl-upload-placeholder').style.display = 'none';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveBlacklistDirect() {
+  const brand = document.getElementById('bl-brand').value.trim();
+  const name = document.getElementById('bl-name').value.trim();
+  const reason = document.getElementById('bl-add-reason').value.trim();
+  if (!reason) { toast('请填写踩雷原因'); return; }
+  if (!brand && !name) { toast('请至少填写品牌或产品名'); return; }
+  
+  products.unshift({
+    id: Date.now().toString(),
+    status: 'blacklist',
+    brand, name,
+    category: '',
+    subcat: '',
+    img: blAddImg,
+    blReason: reason,
+    notes: '',
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
+  save();
+  closeBlAddModal();
+  renderBlacklist();
+  toast('已加入黑名单 🚫');
 }
 
 function wishToPurchased(id) {
@@ -1835,7 +1957,17 @@ function deleteCurrent() {
 // ═══════════════════════════
 // ADD / EDIT MODAL
 // ═══════════════════════════
-function openAddModal(editId) {
+function fabAdd() {
+  // Auto-detect type from current tab
+  if (currentPage === 'blacklist') {
+    openBlacklistAdd();
+  } else {
+    const type = currentPage === 'wishlist' ? 'wishlist' : 'inventory';
+    openAddModal(null, type);
+  }
+}
+
+function openAddModal(editId, forceType) {
   editingId = editId || null;
   const modal = document.getElementById('addModal');
   resetForm();
@@ -1847,16 +1979,27 @@ function openAddModal(editId) {
     document.getElementById('type-selector').style.display = 'none';
     setAddType(p.status);
     fillForm(p);
+    // Go straight to phase 2 with fields open
+    document.getElementById('phase-upload').style.display = 'none';
+    document.getElementById('phase-form').style.display = '';
+    document.getElementById('skip-ai-link').style.display = 'none';
+    document.getElementById('edit-fields').style.display = '';
+    document.getElementById('result-brand').textContent = p.brand || '';
+    document.getElementById('result-name').textContent = p.name || '';
+    document.getElementById('result-cat').textContent = catLabel(p.category || '');
   } else {
-    document.getElementById('modal-title').textContent = '添加产品';
-    document.getElementById('type-selector').style.display = '';
-    setAddType('inventory');
+    const type = forceType || 'inventory';
+    document.getElementById('modal-title').textContent = type === 'wishlist' ? '✨ 添加种草' : '📦 添加库存';
+    document.getElementById('type-selector').style.display = 'none';
+    setAddType(type);
+    // Update upload label based on type
+    document.getElementById('upload-label').textContent = type === 'wishlist' ? '上传截图 / 产品照片' : '拍照 / 选择产品图';
+    document.getElementById('upload-sublabel').textContent = type === 'wishlist' ? '小红书截图或产品照片都可以' : '拍实物照片，AI自动识别';
   }
 
   renderLocationOptions();
   renderWishTagOptions();
   modal.classList.add('open');
-  // Set default buy date to today for new products
   if (!editingId) {
     document.getElementById('f-buydate').value = new Date().toISOString().slice(0,10);
   }
@@ -1880,20 +2023,31 @@ function setAddType(type) {
 function resetForm() {
   currentImg = null;
   screenshotImg = null;
+  uploadedFullImg = null;
   selectedCat = '';
   selectedPao = 0;
   selectedRemaining = '';
   selectedLocation = '';
   selectedWishTags = [];
   customTags = [];
-  document.getElementById('photo-preview').style.display = 'none';
-  document.getElementById('photo-placeholder').style.display = '';
+  // Reset phase 1 (upload)
+  document.getElementById('phase-upload').style.display = '';
+  document.getElementById('phase-form').style.display = 'none';
+  document.getElementById('skip-ai-link').style.display = '';
+  document.getElementById('upload-preview').style.display = 'none';
+  document.getElementById('upload-placeholder').style.display = '';
   document.getElementById('photo-input').value = '';
   document.getElementById('ai-scanning').classList.remove('active');
+  document.getElementById('ai-btn-text').textContent = '上传图片后点我识别';
+  // Reset phase 2 (form)
+  document.getElementById('edit-fields').style.display = 'none';
   document.getElementById('bl-warning').classList.remove('show');
-  document.getElementById('ai-btn-text').textContent = '拍照后点我识别';
-  document.getElementById('ai-hint').textContent = '拍照/选图 → 自动识别产品信息';
-  ['f-brand','f-name','f-size','f-price','f-buydate','f-opendate','f-notes','f-reason','f-link','f-wish-price','f-wish-source','f-bl-reason'].forEach(id => {
+  document.getElementById('result-img').style.display = 'none';
+  document.getElementById('result-img-placeholder').style.display = '';
+  document.getElementById('result-brand').textContent = '';
+  document.getElementById('result-name').textContent = '';
+  document.getElementById('result-cat').textContent = '';
+  ['f-brand','f-name','f-size','f-price','f-buydate','f-opendate','f-notes','f-reason','f-mynotes','f-link','f-wish-price','f-wish-source','f-bl-reason'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1907,11 +2061,9 @@ function resetForm() {
 function fillForm(p) {
   if (p.img) {
     currentImg = p.img;
-    document.getElementById('photo-preview').src = p.img;
-    document.getElementById('photo-preview').style.display = '';
-    document.getElementById('photo-placeholder').style.display = 'none';
-    document.getElementById('ai-btn-text').textContent = 'AI识别 + 搜索';
-    document.getElementById('ai-hint').textContent = '';
+    document.getElementById('result-img').src = p.img;
+    document.getElementById('result-img').style.display = '';
+    document.getElementById('result-img-placeholder').style.display = 'none';
   }
   if (p.screenshotImg) { screenshotImg = p.screenshotImg; }
   document.getElementById('f-brand').value = p.brand || '';
@@ -1921,6 +2073,8 @@ function fillForm(p) {
   document.getElementById('f-price').value = p.price || '';
   document.getElementById('f-buydate').value = p.buyDate || '';
   document.getElementById('f-source').value = p.purchaseSource || '';
+  if (p.currency && document.getElementById('f-currency')) document.getElementById('f-currency').value = p.currency;
+  if (p.wishCurrency && document.getElementById('f-wish-currency')) document.getElementById('f-wish-currency').value = p.wishCurrency;
   document.getElementById('f-stock').value = p.stock || 1;
   document.getElementById('f-opendate').value = p.openDate || '';
   if (p.pao) {
@@ -1945,6 +2099,7 @@ function fillForm(p) {
   }
   document.getElementById('f-notes').value = p.notes || '';
   document.getElementById('f-reason').value = p.reason || '';
+  if (document.getElementById('f-mynotes')) document.getElementById('f-mynotes').value = p.myNotes || '';
   document.getElementById('f-link').value = p.link || '';
   document.getElementById('f-wish-price').value = p.wishPrice || '';
   document.getElementById('f-wish-source').value = p.wishSource || '';
@@ -1976,9 +2131,13 @@ function selectCatSilent(cat) {
 
 function updateSubcats() {
   const sel = document.getElementById('f-subcat');
+  const group = document.getElementById('subcat-group');
   sel.innerHTML = '<option value="">选择子分类</option>';
   if (selectedCat && SUBCATS[selectedCat]) {
     SUBCATS[selectedCat].forEach(s => { sel.innerHTML += `<option>${s}</option>`; });
+    group.style.display = '';
+  } else {
+    group.style.display = 'none';
   }
 }
 
@@ -2063,7 +2222,9 @@ function saveProduct() {
     size: document.getElementById('f-size').value.trim(),
     price: document.getElementById('f-price').value,
     buyDate: document.getElementById('f-buydate').value,
-    purchaseSource: document.getElementById('f-source').value,
+    purchaseSource: document.getElementById('f-source').value.trim(),
+    currency: document.getElementById('f-currency')?.value || '$',
+    wishCurrency: document.getElementById('f-wish-currency')?.value || '$',
     stock: parseInt(document.getElementById('f-stock').value) || 1,
     openDate: document.getElementById('f-opendate').value,
     pao: selectedPao,
@@ -2072,6 +2233,7 @@ function saveProduct() {
     repurchaseCount: editingId ? (products.find(p=>p.id===editingId)?.repurchaseCount || 0) : 0,
     // wishlist
     reason: document.getElementById('f-reason').value.trim(),
+    myNotes: (document.getElementById('f-mynotes')?.value || '').trim(),
     link: document.getElementById('f-link').value.trim(),
     wishPrice: document.getElementById('f-wish-price').value,
     wishSource: document.getElementById('f-wish-source').value.trim(),
@@ -2091,6 +2253,7 @@ function saveProduct() {
   } else {
     products.unshift(product);
     toast('已保存！🎉');
+    if (navigator.vibrate) navigator.vibrate(50);
   }
 
   save();
@@ -2106,31 +2269,95 @@ function handlePhoto(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(ev) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const maxSize = 600;
-      let w = img.width, h = img.height;
-      if (w > h) { if (w > maxSize) { h *= maxSize/w; w = maxSize; } }
-      else { if (h > maxSize) { w *= maxSize/h; h = maxSize; } }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      currentImg = canvas.toDataURL('image/jpeg', 0.6);
-      document.getElementById('photo-preview').src = currentImg;
-      document.getElementById('photo-preview').style.display = '';
-      document.getElementById('photo-placeholder').style.display = 'none';
-      document.getElementById('ai-btn-text').textContent = 'AI识别 + 搜索';
-      document.getElementById('ai-hint').textContent = '';
-      // Auto-trigger AI
-      if (apiKey) {
-        manualAiScan();
-      } else {
-        toast('照片已添加。设置API Key可AI识别');
-      }
-    };
-    img.src = ev.target.result;
+    uploadedFullImg = ev.target.result;
+    document.getElementById('upload-preview').src = uploadedFullImg;
+    document.getElementById('upload-preview').style.display = '';
+    document.getElementById('upload-placeholder').style.display = 'none';
+    document.getElementById('ai-btn-text').textContent = '🤖 AI识别 + 搜索';
+    toast('图片已上传，点AI按钮识别');
   };
   reader.readAsDataURL(file);
+}
+
+function clearAndRestart() {
+  resetForm();
+  toast('已清空，重新上传');
+}
+
+function toggleManualEdit() {
+  const fields = document.getElementById('edit-fields');
+  const btn = document.getElementById('manual-edit-btn');
+  if (fields.style.display === 'none') {
+    fields.style.display = '';
+    btn.textContent = '📝 收起编辑';
+  } else {
+    fields.style.display = 'none';
+    btn.textContent = '✏️ 手动修改';
+  }
+}
+
+function skipToManual() {
+  document.getElementById('phase-upload').style.display = 'none';
+  document.getElementById('phase-form').style.display = '';
+  document.getElementById('skip-ai-link').style.display = 'none';
+  document.getElementById('edit-fields').style.display = '';
+  document.getElementById('result-name').textContent = '手动填写';
+  renderLocationOptions();
+  renderWishTagOptions();
+}
+
+function showPhase2(brand, name, category) {
+  document.getElementById('phase-upload').style.display = 'none';
+  document.getElementById('phase-form').style.display = '';
+  document.getElementById('skip-ai-link').style.display = 'none';
+  document.getElementById('result-brand').textContent = brand || '';
+  document.getElementById('result-name').textContent = name || '未识别';
+  document.getElementById('result-cat').textContent = catLabel(category || '');
+  document.getElementById('result-img-placeholder').textContent = catEmoji(category || '');
+  renderLocationOptions();
+  renderWishTagOptions();
+}
+
+function setProductImage(imgUrl) {
+  if (!imgUrl) return;
+  const img = document.getElementById('result-img');
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    const maxSize = 300;
+    let w = img.naturalWidth, h = img.naturalHeight;
+    if (w > h) { if (w > maxSize) { h *= maxSize/w; w = maxSize; } }
+    else { if (h > maxSize) { w *= maxSize/h; h = maxSize; } }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    currentImg = canvas.toDataURL('image/jpeg', 0.7);
+    img.src = currentImg;
+  };
+  img.onerror = function() {
+    currentImg = generateProductCard(
+      document.getElementById('f-brand').value,
+      document.getElementById('f-name').value
+    );
+    if (currentImg) img.src = currentImg;
+  };
+  img.style.display = '';
+  document.getElementById('result-img-placeholder').style.display = 'none';
+  img.crossOrigin = 'anonymous';
+  img.src = imgUrl;
+}
+
+function generateProductCard(brand, name) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 300; canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 300, 300);
+  grad.addColorStop(0, '#FFF0ED'); grad.addColorStop(1, '#FFE8F5');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 300, 300);
+  ctx.fillStyle = '#FF6B6B'; ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText((brand||'').substring(0,20), 150, 120);
+  ctx.fillStyle = '#1A0F0A'; ctx.font = 'bold 22px sans-serif';
+  ctx.fillText((name||'').substring(0,30), 150, 160);
+  ctx.font = '60px sans-serif'; ctx.fillText(catEmoji(selectedCat), 150, 240);
+  return canvas.toDataURL('image/jpeg', 0.8);
 }
 
 function manualAiScan() {
@@ -2139,16 +2366,17 @@ function manualAiScan() {
     openApiKeyModal();
     return;
   }
-  if (!currentImg) {
-    toast('请先拍照或选择照片');
+  if (!uploadedFullImg) {
+    toast('请先上传图片');
     return;
   }
   if (addType === 'wishlist') {
-    aiScanScreenshot(currentImg);
+    aiScanScreenshot(uploadedFullImg);
   } else {
-    aiScanProduct(currentImg);
+    aiScanProduct(uploadedFullImg);
   }
 }
+
 
 async function aiScanProduct(imgData) {
   document.getElementById('ai-scanning').classList.add('active');
@@ -2163,7 +2391,7 @@ async function aiScanProduct(imgData) {
         max_tokens: 300,
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imgData.split(',')[1] } },
-          { type: 'text', text: '识别这个美妆/护肤/护发/身体护理产品的品牌和产品名。只返回JSON：{"brand":"英文或中文品牌名","name":"产品全名","brand_en":"英文品牌名"}' }
+          { type: 'text', text: 'Look at this image of a beauty/skincare/haircare/body care product. IMPORTANT: First read any visible TEXT on the product packaging, labels, or screen (brand name, product name, size). The text is more reliable than visual recognition. If this is a screenshot from a website or app (like Sephora, Ulta, or 小红书), read the product title and price shown on screen. Return ONLY JSON, no other text: {"brand":"brand name in original language","name":"full product name","brand_en":"brand name in English"}' }
         ]}]
       })
     });
@@ -2192,8 +2420,11 @@ async function aiScanProduct(imgData) {
     if (identified.name) document.getElementById('f-name').value = identified.name;
     checkBlacklist(identified.brand, identified.name);
     toast('已识别：' + (identified.brand || '') + ' ' + (identified.name || ''));
+    
+    // Show phase 2 with identified info
+    showPhase2(identified.brand, identified.name, '');
 
-    // Step 2: Web search for full product details
+    // Step 2: Web search for full product details + product image URL
     const searchQuery = `${identified.brand_en || identified.brand || ''} ${identified.name || ''}`.trim();
     if (!searchQuery) {
       document.getElementById('ai-btn-text').textContent = '🔄 重新识别';
@@ -2210,7 +2441,7 @@ async function aiScanProduct(imgData) {
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [{ role: 'user', content: 'Search for beauty product "' + searchQuery + '" and find details. Return ONLY a JSON object with these fields (no other text, no markdown): {"category":"skincare or makeup or haircare or bodycare or tools","subcat":"子分类中文","size":"规格如30ml","price":"USD价格数字","pao":开封保质月数或null,"highlights":"产品功效中文50字以内","source":"购买渠道如Sephora"}' }]
+          messages: [{ role: 'user', content: 'Search for beauty product "' + searchQuery + '" and find details. Return ONLY a JSON object (no other text): {"category":"skincare or makeup or haircare or bodycare or tools","subcat":"子分类中文","size":"规格如30ml","price":"USD价格数字","pao":开封保质月数或null,"highlights":"产品功效中文50字以内","source":"购买渠道如Sephora","image_url":"产品官方图片URL或null"}' }]
         })
       });
       
@@ -2256,6 +2487,16 @@ async function aiScanProduct(imgData) {
             }
             if (info.source) document.getElementById('f-source').value = info.source;
             if (info.highlights) document.getElementById('f-notes').value = info.highlights;
+            // Try to load product image
+            if (info.image_url) {
+              setProductImage(info.image_url);
+            } else {
+              // Fallback: generate text card
+              currentImg = generateProductCard(identified.brand, identified.name);
+              const ri = document.getElementById('result-img');
+              ri.src = currentImg; ri.style.display = '';
+              document.getElementById('result-img-placeholder').style.display = 'none';
+            }
             toast('产品信息已自动填充！请检查 ✓');
             document.getElementById('ai-btn-text').textContent = '🔄 重新识别';
           } catch(parseErr) {
@@ -2297,7 +2538,7 @@ async function aiScanScreenshot(imgData) {
           max_tokens: 800,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imgData.split(',')[1] } },
-            { type: 'text', text: '识别这个美妆护肤产品。只返回JSON：{"brand":"品牌","name":"产品名","brand_en":"英文品牌名","category":"skincare|makeup|haircare|bodycare|tools","reason":"产品描述中文","price":"价格数字或null","tags":["标签"]}' }
+            { type: 'text', text: 'Look at this image carefully. It may be a product photo, a screenshot from Sephora/Ulta/Amazon, or a 小红书/social media post about a beauty product. IMPORTANT RULES: 1) READ THE TEXT first - product names, brand names, prices shown in the image are more reliable than visual recognition. 2) If you see a website/app UI, read the product title displayed on screen. 3) If you see Chinese text describing the product, summarize it as the reason. Return ONLY valid JSON, nothing else: {"brand":"brand name","name":"full product name","brand_en":"English brand name","category":"skincare|makeup|haircare|bodycare|tools","reason":"product description or recommendation in Chinese","price":"price number or null","tags":["tag1"]}' }
           ]}]
         })
       });
@@ -2387,6 +2628,7 @@ async function aiScanScreenshot(imgData) {
     }
     checkBlacklist(json.brand, json.name);
     toast('已识别：' + (json.brand || '') + ' ' + (json.name || ''));
+    showPhase2(json.brand, json.name, json.category);
 
     // Step 2: Web search
     const sq = (json.brand_en || json.brand || '') + ' ' + (json.name || '');
@@ -2399,7 +2641,7 @@ async function aiScanScreenshot(imgData) {
           body: JSON.stringify({
             model: 'claude-sonnet-4-20250514', max_tokens: 800,
             tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-            messages: [{ role: 'user', content: 'Search beauty product "' + sq.trim() + '". Return ONLY JSON: {"price":"USD","size":"规格","highlights":"功效中文50字","skin_type":"肤质","rating":"评分"}' }]
+            messages: [{ role: 'user', content: 'Search beauty product "' + sq.trim() + '". Return ONLY JSON: {"price":"USD","size":"规格","highlights":"功效中文50字","skin_type":"肤质","rating":"评分","image_url":"产品图片URL或null"}' }]
           })
         });
         if (sr.ok) {
@@ -2438,128 +2680,7 @@ async function aiScanScreenshot(imgData) {
   document.getElementById('ai-scanning').classList.remove('active');
 }
 
-async function aiScanScreenshot(imgData) {
-  document.getElementById('ai-scanning').classList.add('active');
-  try {
-    // Step 1: Extract info from screenshot
-    toast('正在识别截图...');
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imgData.split(',')[1] } },
-          { type: 'text', text: '这是一个美妆/护肤产品的照片或社交媒体截图。请提取产品信息，只返回JSON（不要其他文字，不要markdown）：{"brand":"品牌","name":"产品名","brand_en":"英文品牌名","category":"skincare|makeup|haircare|bodycare|tools","reason":"产品描述或推荐理由中文","source":"来源","price":"价格数字或null","tags":["标签"]}' }
-        ]}]
-      })
-    });
-    
-    if (!resp.ok) {
-      const errBody = await resp.text();
-      console.error('Screenshot API error:', resp.status, errBody);
-      toast('截图识别失败 (' + resp.status + ')');
-      document.getElementById('ai-scanning').classList.remove('active');
-      return;
-    }
-    
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || '';
-    console.log('Screenshot response:', text.substring(0, 300));
-    
-    let json;
-    try {
-      json = JSON.parse(text.replace(/```json|```/g, '').trim());
-    } catch(parseErr) {
-      // Try to find JSON within the text
-      const jsonMatch = text.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
-      if (jsonMatch) {
-        json = JSON.parse(jsonMatch[0]);
-      } else {
-        console.error('Failed to parse screenshot response:', text);
-        toast('截图识别返回格式异常，请手动填写');
-        document.getElementById('ai-scanning').classList.remove('active');
-        return;
-      }
-    }
-    
-    if (json.brand) document.getElementById('f-brand').value = json.brand;
-    if (json.name) document.getElementById('f-name').value = json.name;
-    if (json.category) {
-      selectedCat = json.category;
-      selectCatSilent(json.category);
-      document.querySelectorAll('#cat-options .quick-opt').forEach(b => {
-        if (b.onclick?.toString().includes("'" + json.category + "'")) b.classList.add('selected');
-      });
-      updateSubcats();
-    }
-    if (json.reason) document.getElementById('f-reason').value = json.reason;
-    if (json.source) document.getElementById('f-wish-source').value = json.source;
-    if (json.price) document.getElementById('f-wish-price').value = String(json.price).replace(/[^0-9.]/g, '');
-    if (json.tags && Array.isArray(json.tags)) {
-      json.tags.forEach(t => { if (t && !selectedWishTags.includes(t)) selectedWishTags.push(t); });
-      renderWishTagOptions();
-    }
 
-    checkBlacklist(json.brand, json.name);
-    toast('已识别：' + (json.brand || '') + ' ' + (json.name || ''));
-
-    // Step 2: Web search for more product info
-    const searchQuery = `${json.brand_en || json.brand || ''} ${json.name || ''}`.trim();
-    if (searchQuery) {
-      toast('正在搜索更多信息...');
-      try {
-        const searchResp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 800,
-            tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-            messages: [{ role: 'user', content: 'Search for beauty product "' + searchQuery + '". Return ONLY JSON (no other text): {"price":"USD价格数字","size":"规格","highlights":"产品功效中文50字","skin_type":"适合肤质中文","rating":"评分"}' }]
-          })
-        });
-        
-        if (searchResp.ok) {
-          const searchData = await searchResp.json();
-          let resultText = '';
-          if (searchData.content) {
-            for (const block of searchData.content) {
-              if (block.type === 'text' && block.text) resultText += ' ' + block.text;
-            }
-          }
-          const jsonMatch = resultText.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
-          if (jsonMatch) {
-            try {
-              const info = JSON.parse(jsonMatch[0]);
-              if (info.price && !document.getElementById('f-wish-price').value) {
-                document.getElementById('f-wish-price').value = String(info.price).replace(/[^0-9.]/g, '');
-              }
-              const extras = [];
-              if (info.highlights) extras.push('产品亮点：' + info.highlights);
-              if (info.skin_type) extras.push('适合：' + info.skin_type);
-              if (info.rating) extras.push('评分：' + info.rating);
-              if (extras.length) {
-                const current = document.getElementById('f-reason').value;
-                document.getElementById('f-reason').value = current + (current ? '\n\n' : '') + extras.join('\n');
-              }
-            } catch(e) { console.error('Search parse error:', e); }
-          }
-        }
-      } catch(searchErr) {
-        console.error('Search error:', searchErr);
-      }
-    }
-
-    toast('截图识别完成！请检查信息 ✓');
-    document.getElementById('ai-btn-text').textContent = '🔄 重新识别';
-  } catch(err) {
-    console.error('Screenshot scan error:', err);
-    toast('截图识别失败：' + err.message);
-  }
-  document.getElementById('ai-scanning').classList.remove('active');
-}
 
 function checkBlacklist(brand, name) {
   const bl = products.filter(p => p.status === 'blacklist');
