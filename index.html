@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/zwd89/Downloads/index_28.html -->
+<!-- saved from url=(0046)file:///C:/Users/zwd89/Downloads/index_31.html -->
 <html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1009,8 +1009,8 @@ body {
     <div class="stats-dashboard">
       <div class="stats-row">
         <div class="stats-card"><div class="stats-card-num" id="stat-total">0</div><div class="stats-card-label">全部产品</div></div>
-        <div class="stats-card"><div class="stats-card-num" id="stat-low" style="color:var(--danger)">0</div><div class="stats-card-label">快用完</div></div>
-        <div class="stats-card"><div class="stats-card-num" id="stat-expiring" style="color:var(--wish)">0</div><div class="stats-card-label">快过期</div></div>
+        <div class="stats-card" onclick="clickStatFilter(&#39;low&#39;)" style="cursor:pointer;"><div class="stats-card-num" id="stat-low" style="color:var(--danger)">0</div><div class="stats-card-label">快用完 👆</div></div>
+        <div class="stats-card" onclick="clickStatFilter(&#39;expiring&#39;)" style="cursor:pointer;"><div class="stats-card-num" id="stat-expiring" style="color:var(--wish)">0</div><div class="stats-card-label">快过期 👆</div></div>
       </div>
     </div>
     <div class="sub-tabs" id="inv-tabs">
@@ -1467,6 +1467,7 @@ let selectedWishTags = [];
 let customTags = [];
 let currentDetailId = null;
 let currentImg = null;
+let currentImgFull = null;
 let screenshotImg = null;
 
 function save() {
@@ -1528,6 +1529,17 @@ function toggleFilter(el) {
     el.classList.add('active');
   }
   renderInventory();
+}
+
+function clickStatFilter(filterName) {
+  // Clear all filters first, then activate just this one
+  activeFilters = [filterName];
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.filter === filterName);
+  });
+  renderInventory();
+  // Scroll to the product list
+  document.getElementById('inv-container').scrollIntoView({ behavior: 'smooth' });
 }
 
 // ═══════════════════════════
@@ -1705,7 +1717,14 @@ function openDetail(id) {
   const body = document.getElementById('detailBody');
   const imgHtml = p.img ? `<img src="${p.img}" alt="">` : `<span style="font-size:80px">${catEmoji(p.category)}</span>`;
 
-  let html = `<div class="detail-img-wrap" ${p.img ? 'onclick="showFullImage(\''+p.img.replace(/'/g,"\\'")+'\')" style="cursor:pointer;"' : ''}>${imgHtml}</div><div class="detail-content">`;
+  let html = `<div class="detail-img-wrap" ${p.img ? 'style="cursor:pointer;"' : ''}>${imgHtml}</div><div class="detail-content">`;
+  // Add click-to-zoom with full image
+  if (p.img) {
+    setTimeout(() => {
+      const wrap = document.querySelector('.detail-img-wrap');
+      if (wrap) wrap.onclick = () => showFullImage(p.imgFull || p.img);
+    }, 50);
+  }
   html += `<div class="detail-brand">${esc(p.brand || '')}</div>`;
   html += `<div class="detail-name">${esc(p.name || '未命名')}</div>`;
 
@@ -1738,15 +1757,28 @@ function openDetail(id) {
       html += `<div class="detail-section"><div class="detail-section-title">使用心得</div><div class="detail-notes">${esc(p.notes)}</div></div>`;
     }
 
-    // Action buttons
-    html += `<div class="detail-btn-row">
-      <button class="detail-btn secondary" onclick="updateRemaining('${p.id}')">更新用量</button>
-      <button class="detail-btn primary" onclick="repurchase('${p.id}')">回购+1</button>
-    </div>`;
-    html += `<div class="detail-btn-row">
-      <button class="detail-btn danger" onclick="moveToBlacklist('${p.id}')">🚫 踩雷（加入黑名单）</button>
-      <button class="detail-btn secondary" onclick="markEmpty('${p.id}')">用完了</button>
-    </div>`;
+    // Action buttons - different for empty vs in-use products
+    if (p.remaining === 'empty') {
+      html += `<div style="background:#FFF0ED;border-radius:12px;padding:12px;margin-bottom:12px;text-align:center;">
+        <div style="font-size:13px;font-weight:600;color:var(--danger);margin-bottom:4px;">📦 已用完${p.emptyDate ? ' ('+p.emptyDate+')' : ''}</div>
+        <div style="font-size:11px;color:var(--text3);">选择下一步操作</div>
+      </div>`;
+      html += `<div class="detail-btn-row">
+        <button class="detail-btn primary" onclick="restockProduct('${p.id}')">🛒 补货（回购+1，重置用量）</button>
+      </div>`;
+      html += `<div class="detail-btn-row">
+        <button class="detail-btn danger" onclick="moveToBlacklist('${p.id}')">🚫 踩雷不再买</button>
+        <button class="detail-btn secondary" onclick="deleteCurrent()">🗑️ 删除</button>
+      </div>`;
+    } else {
+      html += `<div class="detail-btn-row">
+        <button class="detail-btn secondary" onclick="updateRemaining('${p.id}')">更新用量</button>
+        <button class="detail-btn secondary" onclick="markEmpty('${p.id}')">用完了</button>
+      </div>`;
+      html += `<div class="detail-btn-row">
+        <button class="detail-btn danger" onclick="moveToBlacklist('${p.id}')">🚫 踩雷（加入黑名单）</button>
+      </div>`;
+    }
 
   } else if (p.status === 'wishlist') {
     if (p.reason) html += `<div class="detail-section"><div class="detail-section-title">种草原因</div><div class="detail-notes">${esc(p.reason)}</div></div>`;
@@ -1769,7 +1801,10 @@ function openDetail(id) {
     if (p.notes) html += `<div class="detail-section"><div class="detail-section-title">备注</div><div class="detail-notes">${esc(p.notes)}</div></div>`;
 
     html += `<div class="detail-btn-row">
-      <button class="detail-btn secondary" onclick="wishToPurchased('${p.id}')">再给一次机会</button>
+      <button class="detail-btn secondary" onclick="giveSecondChance('${p.id}')">🤔 再给一次机会（从黑名单移除）</button>
+    </div>`;
+    html += `<div class="detail-btn-row">
+      <button class="detail-btn danger" onclick="deleteCurrent()">🗑️ 彻底删除</button>
     </div>`;
   }
 
@@ -1804,13 +1839,27 @@ function updateRemaining(id) {
   openDetail(id);
 }
 
-function repurchase(id) {
+function restockProduct(id) {
   const p = products.find(x => x.id === id);
   if (!p) return;
   p.repurchaseCount = (p.repurchaseCount || 0) + 1;
+  p.remaining = 'high';
+  p.buyDate = new Date().toISOString().slice(0,10);
+  p.openDate = '';
+  p.emptyDate = '';
   save();
-  toast('回购 +1！❤️ 共' + p.repurchaseCount + '次');
+  toast('已补货！回购第' + p.repurchaseCount + '次 🎉');
+  if (navigator.vibrate) navigator.vibrate(50);
   openDetail(id);
+}
+
+function giveSecondChance(id) {
+  if (!confirm('从黑名单移除？')) return;
+  // Just delete the blacklist entry — the original in inventory is untouched
+  products = products.filter(p => p.id !== id);
+  save();
+  toast('已从黑名单移除');
+  closeDetail();
 }
 
 function markEmpty(id) {
@@ -1820,13 +1869,17 @@ function markEmpty(id) {
     p.stock = p.stock - 1;
     p.remaining = 'high';
     p.openDate = new Date().toISOString().slice(0,10);
+    save();
     toast('开了下一瓶！还剩' + p.stock + '瓶');
+    openDetail(id);
   } else {
     p.remaining = 'empty';
-    toast('已标记为空，要补货吗？');
+    p.emptyDate = new Date().toISOString().slice(0,10);
+    save();
+    // Show restock options
+    openDetail(id);
+    toast('已用完！可以在下方选择补货或删除');
   }
-  save();
-  openDetail(id);
 }
 
 function moveToBlacklist(id) {
@@ -2028,6 +2081,7 @@ function setAddType(type) {
 
 function resetForm() {
   currentImg = null;
+  currentImgFull = null;
   screenshotImg = null;
   uploadedFullImg = null;
   selectedCat = '';
@@ -2224,6 +2278,7 @@ function saveProduct() {
     category: selectedCat,
     subcat: document.getElementById('f-subcat').value,
     img: currentImg,
+    imgFull: currentImgFull || currentImg,
     // inventory
     size: document.getElementById('f-size').value.trim(),
     price: document.getElementById('f-price').value,
@@ -2276,17 +2331,25 @@ function handlePhoto(e) {
   const reader = new FileReader();
   reader.onload = function(ev) {
     uploadedFullImg = ev.target.result;
-    // Also create compressed version for storage
     const img = new Image();
     img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const maxSize = 400;
-      let w = img.width, h = img.height;
-      if (w > h) { if (w > maxSize) { h *= maxSize/w; w = maxSize; } }
-      else { if (h > maxSize) { w *= maxSize/h; h = maxSize; } }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      currentImg = canvas.toDataURL('image/jpeg', 0.7);
+      // Small thumbnail for list/cards (200px)
+      const c1 = document.createElement('canvas');
+      let w = img.width, h = img.height, s = 200;
+      if (w > h) { if (w > s) { h *= s/w; w = s; } }
+      else { if (h > s) { w *= s/h; h = s; } }
+      c1.width = w; c1.height = h;
+      c1.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentImg = c1.toDataURL('image/jpeg', 0.7);
+      
+      // Medium image for zoom view (1000px, higher quality)
+      const c2 = document.createElement('canvas');
+      w = img.width; h = img.height; s = 1000;
+      if (w > h) { if (w > s) { h *= s/w; w = s; } }
+      else { if (h > s) { w *= s/h; h = s; } }
+      c2.width = w; c2.height = h;
+      c2.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentImgFull = c2.toDataURL('image/jpeg', 0.85);
     };
     img.src = uploadedFullImg;
     document.getElementById('upload-preview').src = uploadedFullImg;
@@ -2337,7 +2400,7 @@ function showPhase2(brand, name, category) {
     const ri = document.getElementById('result-img');
     ri.src = currentImg;
     ri.style.display = '';
-    ri.onclick = function() { showFullImage(currentImg); };
+    ri.onclick = function() { showFullImage(currentImgFull || currentImg); };
     document.getElementById('result-img-placeholder').style.display = 'none';
   } else {
     document.getElementById('result-img-placeholder').textContent = catEmoji(category || '');
