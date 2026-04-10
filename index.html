@@ -2391,7 +2391,7 @@ async function aiScanProduct(imgData) {
         max_tokens: 300,
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imgData.split(',')[1] } },
-          { type: 'text', text: 'Look at this image of a beauty/skincare/haircare/body care product. IMPORTANT: First read any visible TEXT on the product packaging, labels, or screen (brand name, product name, size). The text is more reliable than visual recognition. If this is a screenshot from a website or app (like Sephora, Ulta, or 小红书), read the product title and price shown on screen. Return ONLY JSON, no other text: {"brand":"brand name in original language","name":"full product name","brand_en":"brand name in English"}' }
+          { type: 'text', text: 'This image shows a beauty product OR a screenshot of a product page (from Sephora, Ulta, Amazon, 小红书, etc).\n\nSTEP 1: READ ALL VISIBLE TEXT in the image. Look for:\n- Brand name (usually at the top, in larger font, or on the product label)\n- Product name (the full product title)\n- Price (like $29.00)\n- Size/volume (like 50ml, 1.7 fl oz)\n- Website name (Sephora, Ulta, etc)\n\nSTEP 2: If this is a website/app screenshot, the product title shown on screen IS the correct answer. DO NOT guess from the product image alone.\n\nSTEP 3: If you can read text on the physical product packaging, use that.\n\nReturn ONLY JSON: {"brand":"exact brand name as shown","name":"exact full product name as shown","brand_en":"English brand name","price":"price number or null","source":"website/store name if visible or null","size":"size if visible or null"}' }
         ]}]
       })
     });
@@ -2418,6 +2418,9 @@ async function aiScanProduct(imgData) {
 
     if (identified.brand) document.getElementById('f-brand').value = identified.brand;
     if (identified.name) document.getElementById('f-name').value = identified.name;
+    if (identified.price) document.getElementById('f-price').value = String(identified.price).replace(/[^0-9.]/g, '');
+    if (identified.source) document.getElementById('f-source').value = identified.source;
+    if (identified.size) document.getElementById('f-size').value = identified.size;
     checkBlacklist(identified.brand, identified.name);
     toast('已识别：' + (identified.brand || '') + ' ' + (identified.name || ''));
     
@@ -2538,7 +2541,7 @@ async function aiScanScreenshot(imgData) {
           max_tokens: 800,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imgData.split(',')[1] } },
-            { type: 'text', text: 'Look at this image carefully. It may be a product photo, a screenshot from Sephora/Ulta/Amazon, or a 小红书/social media post about a beauty product. IMPORTANT RULES: 1) READ THE TEXT first - product names, brand names, prices shown in the image are more reliable than visual recognition. 2) If you see a website/app UI, read the product title displayed on screen. 3) If you see Chinese text describing the product, summarize it as the reason. Return ONLY valid JSON, nothing else: {"brand":"brand name","name":"full product name","brand_en":"English brand name","category":"skincare|makeup|haircare|bodycare|tools","reason":"product description or recommendation in Chinese","price":"price number or null","tags":["tag1"]}' }
+            { type: 'text', text: 'This image shows a beauty product OR a screenshot from a website/app (Sephora, Ulta, Amazon, 小红书, etc).\n\nSTEP 1: READ ALL VISIBLE TEXT carefully:\n- Brand name and full product name (from product title, label, or packaging)\n- Price (like $29.00, ¥199)\n- Any review/recommendation text (especially Chinese text describing why someone likes it)\n- Website/app name\n- Size/volume\n\nSTEP 2: If there is Chinese text reviewing or recommending the product, summarize it as the reason field.\n\nSTEP 3: The TEXT you read is the correct answer. Do NOT guess from blurry product images.\n\nReturn ONLY valid JSON: {"brand":"exact brand name","name":"exact full product name","brand_en":"English brand name","category":"skincare|makeup|haircare|bodycare|tools","reason":"Chinese summary of recommendation/review text if any","price":"price number or null","source":"website or blogger name if visible","tags":["relevant tags"]}' }
           ]}]
         })
       });
